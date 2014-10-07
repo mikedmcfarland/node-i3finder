@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var nomnom = require('nomnom');
 var child_process = require('child_process');
 var _ = require('lodash');
@@ -5,8 +7,10 @@ var Promise = require('promise');
 
 var options = nomnom
 	.script('i3finder')
-	.help('I3 finder is used to focus or move i3 windows and workspaces. Simliar to '  +
-	'')
+	.help('I3 finder is used to focus or move i3 windows and workspaces. If the move '   +
+	'flag is not specified, the chosen item is focused. The dmenu, and workspacePrefix ' +
+	'arguments already have reasonable defaults, but are used to customize the look of ' + 
+	'the choices in dmenu.')
 	.option('move',{
 		abbr: 'm',
 		flag : true,
@@ -17,13 +21,18 @@ var options = nomnom
 		help : 'the dmenu command and arguments',
 		default : ['dmenu'],
 		transform : function(commandString){
-			return commandString.split();
+			return commandString.split(' ');
 		}
 	})
 	.option('workspacePrefix',{
 		abbr : 'w',
 		default : 'workspace: ',
 		help : 'workspace displayname prefix (to tell them apart from other windows)'
+	})
+	.option('showScratch',{
+		abbr: 's',
+		flag : true,
+		help: 'Show scratch workspace in list'
 	})
 	.parse();
 
@@ -78,13 +87,17 @@ dmenuChoice.done(function(choice){
 */
 function exec(command,input){
 	return new Promise(function(resolve,reject){
-		var child = child_process.spawn(_.first(command),_.rest(command));
+		var exe = _.first(command);
+		var args = _.rest(command);
+		var child = child_process.spawn(exe,args);
 		child.stdin.setEncoding = 'utf-8';
 
 		var output = "";
 		child.stdout.on('data',function(part){
 			output += part;
 		});
+
+		child.stderr.pipe(process.stderr);
 
 		child.stdout.on('end',function(){
 			resolve(output);
@@ -116,10 +129,13 @@ function nodeTreeToSeq(tree){
 	return _(nodeAndChildren(tree))
 		.flatten()
 		.filter(function(n){
-			var validType = n.type === 'workspace' || n.type === 'con';
-			// var isScratch = _(n.name).contains('scratch');
-			return validType && n.window !== null; 
-		});		
+			return (n.type === 'con' && n.window !== null) || 
+					n.type === 'workspace'; 
+		})
+		.filter(function(n){
+			var isSratch = _.contains(n.name,'__i3_scratch');
+			return options.showScratch | !isSratch;
+		});
 }
 
 /**

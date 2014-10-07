@@ -1,7 +1,7 @@
 {
   "name": "i3Finder",
   "version": "1.0.0",
-  "description": "node scripts for managing windows in i3",
+  "description": "script for focusing/moving windows in I3 tiling manager, via dmenu",
   "main": "i3finder.js",
   "author": "Michael McFarland",
   "bin" : {
