@@ -5,9 +5,8 @@ var Promise = require('promise');
 
 var options = nomnom
 	.script('i3finder')
-	.help('I3 finder is used to focus or move i3 windows and workspaces. Simliar to '  + 
-		'quickswitch.py, however list of choices to select includes marks, workspaces' +
-		', and windows all together (rather then requiring different paramters for each).')
+	.help('I3 finder is used to focus or move i3 windows and workspaces. Simliar to '  +
+	'')
 	.option('move',{
 		abbr: 'm',
 		flag : true,
@@ -36,16 +35,15 @@ var nodes =
 	.then(JSON.parse)
 	.then(nodeTreeToSeq);
 
-//format the nodes into choices for dmenu
+//format the nodes, then show them as choices in dmenu
 var choices = nodes.then(nodesToChoices);
-
 var dmenuOutput = choices.then(function(choices){
 	var dmenuInput = 
 		_(choices)
 		.pluck('display')
 		.join('\n');
 
-	return spawn(options.dmenu,dmenuInput);
+	return exec(options.dmenu,dmenuInput);
 });
 
 //find the choice selected by matching the output from dmenu
@@ -75,22 +73,10 @@ dmenuChoice.done(function(choice){
 });
 
 /**
-* given a node, provide it and its children in sequence (recursively)
+* execute a command with a child process, and provides a promise of the 
+* output. The process is fed the input arg on stdin (if defined)
 */
-function nodeAndChildren(node){
-	var subNodes = 
-		_(node.nodes)
-		.map(nodeAndChildren)
-		.value();
-
-	return [node].concat(subNodes);
-}
-
-/**
-* spawn a child process using the command, and provides a promise of the 
-* output of the process. The process is fed the input arg on stdin
-*/
-function spawn(command,input){
+function exec(command,input){
 	return new Promise(function(resolve,reject){
 		var child = child_process.spawn(_.first(command),_.rest(command));
 		child.stdin.setEncoding = 'utf-8';
@@ -103,27 +89,24 @@ function spawn(command,input){
 		child.stdout.on('end',function(){
 			resolve(output);
 		});
+		
+		if(input !== undefined)
+			child.stdin.write(input);
 
-		child.stdin.write(input);
 		child.stdin.end();
 	});
 }
 
 /**
-* execute a command as a child process, and return a promise of the 
-* output.
+* given a node, provide it and its children in sequence (recursively)
 */
-function exec(command){
-	return new Promise(function(resolve,reject){
-		child_process.exec(command.join(" "),function(error,stdout,stderr){
-			if(error !== null){
-				reject(error);
-			}
-			else{
-				resolve(stdout);
-			}
-		});
-	});
+function nodeAndChildren(node){
+	var subNodes = 
+		_(node.nodes)
+		.map(nodeAndChildren)
+		.value();
+
+	return [node].concat(subNodes);
 }
 
 /**
@@ -140,7 +123,7 @@ function nodeTreeToSeq(tree){
 }
 
 /**
-* convert a node into a human readable choice
+* convert nodes into a human readable choices
 */
 function nodesToChoices(nodes){
 	return nodes.map(function(node){
