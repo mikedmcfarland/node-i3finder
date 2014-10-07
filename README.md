@@ -1,9 +1,9 @@
 #I3 Finder
 
-Script for finding windows/workspaces/marks in the I3 Tiling window manager.
+I3 finder is a node js script for finding windows/workspaces/marks in the I3 Tiling window manager.
 
-I3 finder is used to focus or move I3 windows and workspaces.
-Similar to quickswitch.py, however list of choices to select includes 
+Use it to focus or move I3 windows and workspaces.
+Similar to quickswitch.py, however the list of choices to select includes 
 marks, workspaces, and windows all together (rather then requiring different parameters for each).
 
 #Installation
