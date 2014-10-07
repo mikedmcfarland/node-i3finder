@@ -8,7 +8,7 @@ marks, workspaces, and windows all together (rather then requiring different par
 
 #Installation
 If you have node installed, you can install i3finder using npm and this Github repository. For example:
-`sudo npm install -g https://github.com/mikedmcfarland/node-i3finder.git`
+`sudo npm install -g git+https://github.com/mikedmcfarland/node-i3finder.git`
 #Usage
 If you've installed it globally, then i3finder should be on your path and it should be as simple as running
 `i3finder` to focus a choice with demenu or `i3finder -m` to move a choice to the current focus. This is assuming
