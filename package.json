@@ -4,6 +4,9 @@
   "description": "node scripts for managing windows in i3",
   "main": "i3finder.js",
   "author": "Michael McFarland",
+  "bin" : {
+    "i3finder" : "i3finder.js"
+  },
   "dependencies": {
     "lodash": "^2.4.1",
     "nomnom": "^1.8.0",
