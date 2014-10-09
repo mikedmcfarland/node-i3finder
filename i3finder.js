@@ -4,6 +4,7 @@ var nomnom = require('nomnom');
 var child_process = require('child_process');
 var _ = require('lodash');
 var Promise = require('promise');
+var fs = require('fs');
 
 var options = nomnom
 	.script('i3finder')
@@ -34,74 +35,168 @@ var options = nomnom
 		flag : true,
 		help: 'Show scratch workspace in list'
 	})
+	.option('dontTrackState',{
+		abbr: 't',
+		flag : true,
+		help : 'Dont bother saving current state'
+	})
+	.option('action',{
+		abbr : 'a',
+		choices : ['move','focus','back'],
+		default : 'focus',
+		help : 'action to perform'
+
+	})
 	.parse();
 
-var getTreeCommand = ['i3-msg', '-t', 'get_tree'];
-var getNodes = function(){
+if(options.action === 'back'){
+	doBackFocus();
+}else{
+	doDmenuChoice();
+}
+
+
+
+function doDmenuChoice(){
+	//use i3-msg then convert the tree into a sequence of relevant nodes
+	var nodes = 
+		getNodes()
+		.then(function(seq){
+			var	currentFocused = _(seq).find('focused');
+			return _(seq).without(currentFocused);
+		});
+
+	//format the nodes, then show them as choices in dmenu
+	var choices = nodes.then(nodesToChoices);
+	var dmenuOutput = choices.then(function(choices){
+		var dmenuInput = 
+			_(choices)
+			.pluck('display')
+			.join('\n');
+
+		return exec(options.dmenu,dmenuInput);
+	});
+
+	//find the choice selected by matching the output from dmenu
+	var dmenuChoice = Promise.all([choices,dmenuOutput]).then(function(results){
+		var choices = results[0];
+		var output = results[1].trim();
+
+		return choices
+			.find(function(c){
+				return c.display === output;
+			});
+	});
+
+	//use the choice to either focus or move the selection (by id)
+	dmenuChoice.done(function(choice){
+
+		if(choice === undefined)
+			return;
+
+		var id = choice.id;
+
+		var actions = {
+			focus : ['focus'],
+			move : ['move','workspace','current'] 
+		};
+
+		var action = actions[options.action];
+
+		//save the state before we mess with things	
+		saveCurrentState().done(function(){
+			executeActionOnNode(id,action).done(console.log);	
+		});
+		
+	});
+}
+
+function doBackFocus(){
+	getLastState()
+	.done(function(lastState){
+		var focusCommands =
+			_(lastState.workspaces).map(function(w){
+				return "workspace " + w;
+			})
+			.value()
+			.concat(['[con_id=' + lastState.node	+ '] focus'])
+			.join(';');
+
+		//save the state before we mess with things
+		saveCurrentState().done(function(){
+			exec(['i3-msg'].concat([focusCommands]));
+		});
+
+	});
+}
+
+function executeActionOnNode(id,action){
+		var command =  ['i3-msg'].concat(['[con_id=' + id + "]"]).concat(action);
+		return exec(command);	
+}
+
+function getNodes(){
+	var getTreeCommand = ['i3-msg', '-t', 'get_tree'];
+
 	return exec(getTreeCommand)
 		.then(JSON.parse)
 		.then(nodeTreeToSeq);
-};
-//use i3-msg then convert the tree into a sequence of relevant nodes
-var nodes = 
-	getNodes()
-	.then(function(seq){
-		var	currentFocused = _(seq).find('focused');
-		return _(seq).without(currentFocused);
+}
+
+function getCurrentFocusedWorkspaces(){
+	var command = ['i3-msg','-t','get_workspaces'];
+	return exec(command)
+	.then(JSON.parse)
+	.then(function(workspaces){
+		return _(workspaces)
+			.filter('visible')
+			.value();
 	});
+}
 
-//format the nodes, then show them as choices in dmenu
-var choices = nodes.then(nodesToChoices);
-var dmenuOutput = choices.then(function(choices){
-	var dmenuInput = 
-		_(choices)
-		.pluck('display')
-		.join('\n');
+function getCurrentFocusedNode(){
+	return getNodes()
+	.then(function(nodes){
+		return _(nodes).find('focused');
+	});
+}
 
-	return exec(options.dmenu,dmenuInput);
-});
+function getLastState(){
+	var readFile = Promise.denodeify(fs.readFile);
+	return readFile('./lastState.json','utf8')
+		.then(JSON.parse);
+}
 
-//find the choice selected by matching the output from dmenu
-var dmenuChoice = Promise.all([choices,dmenuOutput]).then(function(results){
-	var choices = results[0];
-	var output = results[1].trim();
+function saveCurrentState(){
 
-	return choices
-		.find(function(c){
-			return c.display === output;
-		});
-});
-
-//use the choice to either focus or move the selection (by id)
-dmenuChoice.done(function(choice){
-
-	var executeAction = function(id,action){
-		var command =  ['i3-msg'].concat(['[con_id=' + id + "]"]).concat(action);
-		exec(command).done(console.log);	
-	};
-
-	if(choice === undefined){
-		//Focusing the window that's currently focused
-		//because of a bug where when a mouse is over an unfocused
-		//window, canceling out of dmenu gives it focus.
-		//re-grabbing the tree again since focus can change
-		//after opening this.
-		getNodes()
-		.done(function(nodes){
-			var focused = _(nodes).find('focused');
-			var id = focused.id;
-			var action = ['focus'];
-			executeAction(id,action);
-		});
-		
-	}else{
-		var id = choice.id;
-		var action = options.move === undefined ? ['focus'] : ['move','workspace','current'];
-		executeAction(id,action);
+	if(options.dontTrackState){
+		return Promsie.resolve();	
 	}
 
-		
-});
+	var workspaces = getCurrentFocusedWorkspaces();
+	var node = getCurrentFocusedNode();
+
+	var info = Promise.all([workspaces,node]);
+
+	info.done(function(results){
+		var workspaces = results[0];
+		var node = results[1];
+
+		var fileContent = JSON.stringify({
+			workspaces : _.pluck(workspaces,'name'),
+			node : node.id
+		});
+
+		fs.writeFile('./lastState.json',fileContent,function(error){
+			if(error){
+				console.log(error);
+			}
+		});
+	});
+
+	return info;
+	
+}
 
 /**
 * execute a command with a child process, and provides a promise of the 
