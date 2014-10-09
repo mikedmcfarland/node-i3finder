@@ -37,12 +37,18 @@ var options = nomnom
 	.parse();
 
 var getTreeCommand = ['i3-msg', '-t', 'get_tree'];
-
-//use i3-msg then convert the tree into a sequence of relevent nodes
+var getNodes = function(){
+	return exec(getTreeCommand)
+		.then(JSON.parse)
+		.then(nodeTreeToSeq);
+};
+//use i3-msg then convert the tree into a sequence of relevant nodes
 var nodes = 
-	exec(getTreeCommand)
-	.then(JSON.parse)
-	.then(nodeTreeToSeq);
+	getNodes()
+	.then(function(seq){
+		var	currentFocused = _(seq).find('focused');
+		return _(seq).without(currentFocused);
+	});
 
 //format the nodes, then show them as choices in dmenu
 var choices = nodes.then(nodesToChoices);
@@ -68,17 +74,33 @@ var dmenuChoice = Promise.all([choices,dmenuOutput]).then(function(results){
 
 //use the choice to either focus or move the selection (by id)
 dmenuChoice.done(function(choice){
-	if(choice === undefined)
-		return;
 
-	var command =  ['i3-msg','[con_id=' + choice.id + "]"] ;
-	if(options.move === undefined){
-		command = command.concat(["focus"]);
+	var executeAction = function(id,action){
+		var command =  ['i3-msg'].concat(['[con_id=' + id + "]"]).concat(action);
+		exec(command).done(console.log);	
+	};
+
+	if(choice === undefined){
+		//Focusing the window that's currently focused
+		//because of a bug where when a mouse is over an unfocused
+		//window, canceling out of dmenu gives it focus.
+		//re-grabbing the tree again since focus can change
+		//after opening this.
+		getNodes()
+		.done(function(nodes){
+			var focused = _(nodes).find('focused');
+			var id = focused.id;
+			var action = ['focus'];
+			executeAction(id,action);
+		});
+		
 	}else{
-		command = command.concat(["move","workspace","current"]);
+		var id = choice.id;
+		var action = options.move === undefined ? ['focus'] : ['move','workspace','current'];
+		executeAction(id,action);
 	}
 
-	exec(command).done(console.log);
+		
 });
 
 /**
