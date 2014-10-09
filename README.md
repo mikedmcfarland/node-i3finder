@@ -22,12 +22,12 @@ act on it, then immediately restore the previous view you had (very common for m
 
 #Installation
 You must have node, and dmenu installed.
-If you have node installed, you can install i3finder using npm and this Github repository. For example:
+You can install i3finder using npm and this Github repository. For example:
 `npm install -g git+https://github.com/mikedmcfarland/node-i3finder.git`
 
 #Usage
 If you've installed it globally, then i3finder should be on your path and it should be as simple as running
-`i3finder` to focus a choice with demenu or `i3finder -m` to move a choice to the current focus. This is assuming
+`i3finder` to focus a choice with demenu or `i3finder -a move` to move a choice to the current focus. This is assuming
 dmenu is installed and on your path as well.
 
 
