@@ -8,8 +8,8 @@ var fs = require('fs');
 
 var options = nomnom
 	.script('i3finder')
-	.help('I3 finder is used to focus or move i3 windows and workspaces. If the move '   +
-	'flag is not specified, the chosen item is focused. The dmenu, and workspacePrefix ' +
+	.help('I3 finder is used to focus or move i3 windows and workspaces. If the action '   +
+	'argument is not specified, the chosen item is focused. The dmenu, and workspacePrefix ' +
 	'arguments already have reasonable defaults, but are used to customize the look of ' + 
 	'the choices in dmenu.')
 	.option('move',{
@@ -56,7 +56,9 @@ if(options.action === 'back'){
 }
 
 
-
+/**
+* Use dmenu to show a list of workspaces/windows to act on
+*/
 function doDmenuChoice(){
 	//use i3-msg then convert the tree into a sequence of relevant nodes
 	var nodes = 
@@ -91,6 +93,7 @@ function doDmenuChoice(){
 	//use the choice to either focus or move the selection (by id)
 	dmenuChoice.done(function(choice){
 
+		//canceled out of dmenu, do nothing and exit
 		if(choice === undefined)
 			return;
 
@@ -100,17 +103,22 @@ function doDmenuChoice(){
 			focus : ['focus'],
 			move : ['move','workspace','current'] 
 		};
-
 		var action = actions[options.action];
 
 		//save the state before we mess with things	
 		saveCurrentState().done(function(){
-			executeActionOnNode(id,action).done(console.log);	
+			//call the action on the node chosen
+			var command =  ['i3-msg'].concat(['[con_id=' + id + "]"]).concat(action);
+			exec(command).done(console.log);
 		});
 		
 	});
 }
 
+/**
+* Return the workspace visibility and window focus back to what it was
+* last time it was saved by i3finder.
+*/
 function doBackFocus(){
 	getLastState()
 	.done(function(lastState){
@@ -123,16 +131,12 @@ function doBackFocus(){
 			.join(';');
 
 		//save the state before we mess with things
-		saveCurrentState().done(function(){
+		saveCurrentState().then(function(){
+			//focus workspaces and window
 			exec(['i3-msg'].concat([focusCommands]));
 		});
 
 	});
-}
-
-function executeActionOnNode(id,action){
-		var command =  ['i3-msg'].concat(['[con_id=' + id + "]"]).concat(action);
-		return exec(command);	
 }
 
 function getNodes(){
@@ -143,7 +147,7 @@ function getNodes(){
 		.then(nodeTreeToSeq);
 }
 
-function getCurrentFocusedWorkspaces(){
+function getVisibleWorkspaces(){
 	var command = ['i3-msg','-t','get_workspaces'];
 	return exec(command)
 	.then(JSON.parse)
@@ -154,7 +158,7 @@ function getCurrentFocusedWorkspaces(){
 	});
 }
 
-function getCurrentFocusedNode(){
+function getFocusedNode(){
 	return getNodes()
 	.then(function(nodes){
 		return _(nodes).find('focused');
@@ -167,14 +171,19 @@ function getLastState(){
 		.then(JSON.parse);
 }
 
+/**
+* Writes the current workspace visibility and window focus to a json file.
+* returns a promise of when its finished gathering what it needs from I3
+* and its safe to mess with the tree.
+*/
 function saveCurrentState(){
 
 	if(options.dontTrackState){
 		return Promsie.resolve();	
 	}
 
-	var workspaces = getCurrentFocusedWorkspaces();
-	var node = getCurrentFocusedNode();
+	var workspaces = getVisibleWorkspaces();
+	var node = getFocusedNode();
 
 	var info = Promise.all([workspaces,node]);
 
