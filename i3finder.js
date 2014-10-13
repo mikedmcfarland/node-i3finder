@@ -42,7 +42,7 @@ var options = nomnom
 	})
 	.option('action',{
 		abbr : 'a',
-		choices : ['move','focus','back'],
+		choices : ['move','focus','back','save'],
 		default : 'focus',
 		help : 'action to perform'
 
@@ -51,6 +51,8 @@ var options = nomnom
 
 if(options.action === 'back'){
 	doBackFocus();
+}else if(options.action === 'save'){
+	saveCurrentState();
 }else{
 	doDmenuChoice();
 }
@@ -241,7 +243,7 @@ function exec(command,input){
 */
 function nodeAndChildren(node){
 	var subNodes = 
-		_(node.nodes)
+		_(node.nodes.concat(node.floating_nodes))
 		.map(nodeAndChildren)
 		.value();
 
