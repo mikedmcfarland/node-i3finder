@@ -6,6 +6,10 @@ var _ = require('lodash');
 var Promise = require('promise');
 var fs = require('fs');
 
+var formatCommandString = function(commandString){
+	return commandString.split(' ');
+};
+
 var options = nomnom
 	.script('i3finder')
 	.help('I3 finder is used to focus or move i3 windows and workspaces. If the action '   +
@@ -21,9 +25,7 @@ var options = nomnom
 		abbr : 'd',
 		help : 'the dmenu command and arguments',
 		default : ['dmenu'],
-		transform : function(commandString){
-			return commandString.split(' ');
-		}
+		transform : formatCommandString
 	})
 	.option('workspacePrefix',{
 		abbr : 'w',
@@ -40,23 +42,29 @@ var options = nomnom
 		flag : true,
 		help : 'Dont bother saving current state'
 	})
+	.option('i3msg',{
+		abbr: 'i',
+		help: 'command to execute when using msg action'
+	})
 	.option('action',{
 		abbr : 'a',
-		choices : ['move','focus','back','save'],
+		choices : ['move','focus','back','save','msg'],
 		default : 'focus',
 		help : 'action to perform'
 
 	})
 	.parse();
 
-if(options.action === 'back'){
-	doBackFocus();
-}else if(options.action === 'save'){
-	saveCurrentState();
-}else{
-	doDmenuChoice();
-}
+var actions = {
+	move : doDmenuChoice,
+	focus : doDmenuChoice,
+	back : doBackFocus,
+	msg : doMsg,
+	save : saveCurrentState
+};
 
+var action = actions[options.action];
+action();
 
 /**
 * Use dmenu to show a list of workspaces/windows to act on
@@ -115,6 +123,21 @@ function doDmenuChoice(){
 		});
 		
 	});
+}
+
+function doMsg(){
+	var msg = options.i3msg;
+	if(msg === undefined){
+		console.error('Error: if the i3msg action is used, the msg paramter ' +
+		'must be defined');
+		return;
+	}
+
+	var command = ["i3-msg",msg];
+	saveCurrentState()
+		.then(exec(command))
+		.done(function(){
+		});
 }
 
 /**
