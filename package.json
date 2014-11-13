@@ -1,15 +1,30 @@
 {
   "name": "i3Finder",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "script for focusing/moving windows in I3 tiling manager, via dmenu",
   "main": "i3finder.js",
   "author": "Michael McFarland",
   "bin" : {
     "i3finder" : "i3finder.js"
   },
+  "keywords" : [
+    "i3",
+    "dmenu",
+    "application switcher"
+  ],
+
+  "license": "MIT",
+
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/mikedmcfarland/node-i3finder.git"
+  },
+
   "dependencies": {
     "lodash": "^2.4.1",
     "nomnom": "^1.8.0",
     "promise": "^6.0.0"
   }
+
+
 }
