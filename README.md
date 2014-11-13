@@ -21,15 +21,14 @@ maneuvers done within the finder. Useful for when you wish to quickly find a win
 act on it, then immediately restore the previous view you had (very common for me).
 
 #Installation
-You must have node, and dmenu installed.
-You can install i3finder using npm and this Github repository. For example:
-`npm install -g git+https://github.com/mikedmcfarland/node-i3finder.git`
+You must have node, and dmenu installed (or similiar program launcher).
+You can install i3finder using npm 
+`npm install -g i3-finder`
 
 #Usage
 If you've installed it globally, then i3finder should be on your path and it should be as simple as running
 `i3finder` to focus a choice with demenu or `i3finder -a move` to move a choice to the current focus. This is assuming
 dmenu is installed and on your path as well.
-
 
 You can also specify custom dmenu parameters, and other various options. Here's an example from my i3 config:
 ```
