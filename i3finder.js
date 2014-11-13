@@ -63,6 +63,8 @@ var actions = {
 	save : saveCurrentState
 };
 
+var stateFilePath = __dirname + '/lastState.json';
+
 var action = actions[options.action];
 action();
 
@@ -192,7 +194,7 @@ function getFocusedNode(){
 
 function getLastState(){
 	var readFile = Promise.denodeify(fs.readFile);
-	return readFile('./lastState.json','utf8')
+	return readFile(stateFilePath,'utf8')
 		.then(JSON.parse);
 }
 
@@ -221,7 +223,7 @@ function saveCurrentState(){
 			node : node.id
 		});
 
-		fs.writeFile('./lastState.json',fileContent,function(error){
+		fs.writeFile(stateFilePath,fileContent,function(error){
 			if(error){
 				console.log(error);
 			}
