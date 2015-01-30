@@ -1,45 +1,116 @@
-#I3 Finder
+---
+title: I3 finder
+date : 2015-01-29
+tags : [linux]
+---
+# I3finder
 
-I3 finder is a node js script for finding windows/workspaces/marks in the I3 Tiling window manager.
+[I3 finder](https://github.com/mikedmcfarland/node-i3finder) is a program made for the [I3 Window Manager](https://i3wm.org/).
+It gives you dmenu access to your windows tags and workspaces. You can
+* focus and move windows, tags and workspaces.
+* jump back to previous window configuration, like 'alt tab'.
 
-Use it to focus or move I3 windows and workspaces.
-Similar to quickswitch.py, however the list of choices to select includes 
-marks, workspaces, and windows all together (rather then requiring different parameters for each).
+I made it because I didn't see anything available that provided a unified interface
+for tags, windows, and workspaces. And I *need* a keyboard driven fuzzy search for just about everything.
 
-##Actions
-### Focus 
-A list of workspaces/windows/tags show in dmenu, whatever chosen is focused
-### Move
-A list of workspaces/windows/tags show in dmenu, whatever chosen is pulled and 
-moved into the current focused area
-
-### Back 
-i3 finder stores the state of visible workspaces / the current focus before 
-making maneuvers, if back is executed, i3 will restore those workspaces visibility
-and focus. Similar to one press of alt tab in windows, except it only works for 
-maneuvers done within the finder. Useful for when you wish to quickly find a window, 
-act on it, then immediately restore the previous view you had (very common for me).
-
-#Installation
-You must have node, and dmenu installed.
-You can install i3finder using npm and this Github repository. For example:
-`npm install -g git+https://github.com/mikedmcfarland/node-i3finder.git`
-
-#Usage
-If you've installed it globally, then i3finder should be on your path and it should be as simple as running
-`i3finder` to focus a choice with demenu or `i3finder -a move` to move a choice to the current focus. This is assuming
-dmenu is installed and on your path as well.
-
-
-You can also specify custom dmenu parameters, and other various options. Here's an example from my i3 config:
+## Installation
+It's a node js script, and it's on npm and [github](https://github.com/mikedmcfarland/node-i3finder), and you can install it via
+```bash
+npm install -g i3-finder
 ```
-bindsym $mod+p exec i3finder -d "dmenu -fn 'inconsolata:pixelsize=30' -y 400 -x 550 -w 800 -l 10 -i -dim 0.7"
-bindsym $mod+g exec i3finder -a move -d "dmenu -fn 'inconsolata:pixelsize=30' -y 400 -x 550 -w 800 -l 10 -i -dim 0.7"
+You also need dmenu installed and on your path.
+
+## Usage
+Here are the command line options
+```bash
+$ i3finder --help
+Usage: i3finder [options]
+
+Options:
+   -d, --dmenu             The dmenu command and arguments
+   -w, --workspacePrefix   Workspace displayname prefix [workspace: ]
+   -s, --showScratch       Show scratch workspace in list
+   -t, --dontTrackState    Dont bother saving current state
+   -i, --i3msg             Command to execute when using msg action.
+   -a, --action            Action to perform.  [focus]
+```
+###Focusing and Moving windows
+
+To move a window use
+```bash
+i3finder -a move
+```
+then select from the list. That window, tag, or workspace will all be moved to your current position.
+
+To focus a window use
+```bash
+i3finder
+```
+
+### Moving back to previous focus / state tracking
+
+To move back to the previous window state use
+
+```bash
+i3finder -action back
+```
+
+**But be warned**, I3finder only knows about the window configurations because it saves them before making changes.
+If I3finder doesn't make the change, then it's unaware of the states.
+
+This can be useful, since normally I only want to save jumps, rather then every directional movement.
+But you can also ask i3finder to msg i3 directly, and it will keep track of changes.
+You do this through the msg action
+
+```bash
+#msg i3 with 'workspace 1' which will focus workspace 1.
+i3finder -action msg -i 'workspace 1'
+#Back will now go back to the window configuration before focusing workspace 1
+```
+
+### Example configuration
+
+Here's a simplified version of my configuration
+
+```bash
+
+# mod p brings up a list of windows/workspaces/tags to focus
+bindsym $mod+p exec i3finder
+
+# mod g brings up a list of windows/workspaces/tags to move to the current area
+bindsym $mod+g exec i3finder -a move
+
+# mod b triggers the back manuever
 bindsym $mod+b exec i3finder -a back
- 
-```
-$mod+p to focus a window/workspace, and $mod+g to move it (grab). I am passing in parameters to dmenu2 for adjustments to the font, positioning, etc...
 
-There's no reason you have to use dmenu at all (you can replace dmenu with say, yeganesh, or whatever ).
- You can see all available flags / settings by running
-`i3finder --help`	 
+# change focus on vim style keys, without the finder
+# that way little motions dont mess up our history
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# bind mod [num] to change to a workspace, but use msg parameter
+# so that these motions are added to our history.
+bindsym $mod+1 exec i3finder -a msg -i 'workspace 1'
+bindsym $mod+2 exec i3finder -a msg -i 'workspace 2'
+bindsym $mod+3 exec i3finder -a msg -i 'workspace 3'
+bindsym $mod+4 exec i3finder -a msg -i 'workspace 4'
+bindsym $mod+5 exec i3finder -a msg -i 'workspace 5'
+bindsym $mod+6 exec i3finder -a msg -i 'workspace 6'
+bindsym $mod+7 exec i3finder -a msg -i 'workspace 7'
+bindsym $mod+8 exec i3finder -a msg -i 'workspace 8'
+bindsym $mod+9 exec i3finder -a msg -i 'workspace 9'
+bindsym $mod+0 exec i3finder -a msg -i 'workspace 10'
+```
+
+## Alternative launchers
+I3 finder uses dmenu by default, but you can utilize any application launcher
+that you wish. You can specify the command used to show selections via the dmenu
+parameter.
+
+## Implementation
+It calls the i3-msg CLI, queries the current i3 tree, and then forms a
+list of selections. It pipes those selections to dmenu.
+Then based on your selection uses i3-msg CLI again to manipulate your windows.
+Other then some writing/reading of json to track state, That's about it.
